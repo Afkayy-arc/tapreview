@@ -3,6 +3,17 @@
   "restaurants": {
     "demo": {
       "name": "Demo Bistro",
+      "category": "restaurant",
+      "website": "",
+      "placeId": "",
+      "logo": "",
+      "feedbackEmail": "",
+      "privateBelow": 0
+    },
+    "demo-clinic": {
+      "name": "Demo Clinic",
+      "category": "clinic",
+      "website": "",
       "placeId": "",
       "logo": "",
       "feedbackEmail": "",

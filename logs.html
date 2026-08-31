@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TapReview · Logs</title>
+<style>
+  :root{
+    --bg:#FAF7F2; --surface:#FFFFFF; --ink:#241D16; --muted:#6E6259;
+    --line:#E7DFD4; --accent:#1E6B4E; --accent-soft:#E4F0EA;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#171310; --surface:#211C17; --ink:#F2EBE2; --muted:#A3968A;
+      --line:#372F27; --accent:#3FA97C; --accent-soft:#20302A;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#171310; --surface:#211C17; --ink:#F2EBE2; --muted:#A3968A;
+    --line:#372F27; --accent:#3FA97C; --accent-soft:#20302A;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:14px; line-height:1.5; padding:24px 18px 60px;
+  }
+  .wrap{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+  h1{font-size:24px;margin:0}
+  h2{font-size:16px;margin:0}
+  p.lead{color:var(--muted);margin:0;font-size:14px}
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:16px;
+    padding:18px; display:flex; flex-direction:column; gap:12px;
+  }
+  .table-scroll{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+  th,td{
+    text-align:left; padding:8px 12px; border-bottom:1px solid var(--line);
+    font-size:13px; vertical-align:top; white-space:nowrap;
+  }
+  td.txt{white-space:normal;min-width:260px;max-width:420px;color:var(--muted)}
+  th{
+    font-size:11px; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--muted); position:sticky; top:0; background:var(--surface);
+  }
+  .pill{
+    display:inline-block; padding:1px 8px; border-radius:999px;
+    background:var(--accent-soft); color:var(--accent);
+    font-size:12px; font-weight:600;
+  }
+  .setup{font-size:14px;line-height:1.7}
+  .setup code{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+  .err{color:#B4463C}
+  button{
+    border:1px solid var(--line); border-radius:10px; padding:9px 16px; cursor:pointer;
+    font-family:inherit; font-size:14px; font-weight:600;
+    background:var(--surface); color:var(--ink); align-self:flex-start;
+  }
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>TapReview logs</h1>
+  <p class="lead" id="lead">Every scan, rating, kept review, and Google click across your businesses.</p>
+  <div id="content"><div class="card">Loading…</div></div>
+</div>
+
+<script>
+(async function(){
+  "use strict";
+  var content = document.getElementById("content");
+
+  function esc(s){
+    var d = document.createElement("div");
+    d.textContent = s == null ? "" : String(s);
+    return d.innerHTML;
+  }
+
+  /* Find the analytics endpoint from the registry */
+  var analyticsUrl = "";
+  try{
+    var reg = await (await fetch("restaurants.json", {cache:"no-store"})).json();
+    analyticsUrl = reg.analyticsUrl || "";
+  }catch(e){}
+
+  if (!analyticsUrl){
+    content.innerHTML =
+      '<div class="card setup"><h2>Logging isn’t connected yet</h2>' +
+      'Logs need a free collector (a Google Sheet). One-time setup:<br>' +
+      '1. Create a Google Sheet → <b>Extensions → Apps Script</b>.<br>' +
+      '2. Paste in <a href="https://github.com/Afkayy-arc/tapreview/blob/main/logging/apps-script.gs" target="_blank" rel="noopener"><code>logging/apps-script.gs</code></a> from this repo and save.<br>' +
+      '3. <b>Deploy → New deployment → Web app</b>, execute as <i>Me</i>, access <i>Anyone</i>.<br>' +
+      '4. Put the <code>/exec</code> URL into <code>"analyticsUrl"</code> in <code>restaurants.json</code>, commit &amp; push.<br>' +
+      'From then on every visitor event lands in the sheet and this page turns into the dashboard.</div>';
+    return;
+  }
+
+  var events = [];
+  try{
+    var res = await fetch(analyticsUrl + (analyticsUrl.indexOf("?")===-1 ? "?" : "&") + "limit=500");
+    events = (await res.json()).events || [];
+  }catch(e){
+    content.innerHTML = '<div class="card err">Couldn’t reach the log endpoint (' + esc(analyticsUrl) + '). Check the Apps Script deployment is set to “Anyone”.</div>';
+    return;
+  }
+
+  /* ---- per-business funnel summary ---- */
+  var by = {};
+  events.forEach(function(ev){
+    var k = ev.business || "?";
+    var b = by[k] || (by[k] = {scans:0, rates:0, ratingSum:0, ratingN:0, picks:0, google:0, feedback:0});
+    if (ev.event === "scan") b.scans++;
+    if (ev.event === "rate"){ b.rates++; var r = Number(ev.rating); if (r){ b.ratingSum += r; b.ratingN++; } }
+    if (ev.event === "pick") b.picks++;
+    if (ev.event === "google_click") b.google++;
+    if (ev.event === "feedback_send") b.feedback++;
+  });
+
+  var summaryRows = Object.keys(by).map(function(k){
+    var b = by[k];
+    var avg = b.ratingN ? (b.ratingSum/b.ratingN).toFixed(1) : "—";
+    var conv = b.scans ? Math.round(b.google/b.scans*100) + "%" : "—";
+    return "<tr><td><b>" + esc(k) + "</b></td><td>" + b.scans + "</td><td>" + b.rates +
+      "</td><td>" + avg + " ★</td><td>" + b.picks + "</td><td>" + b.google +
+      "</td><td>" + b.feedback + "</td><td>" + conv + "</td></tr>";
+  }).join("");
+
+  /* ---- recent events table ---- */
+  var evRows = events.slice(0, 300).map(function(ev){
+    var when = ev.time ? new Date(ev.time).toLocaleString() : "";
+    return "<tr><td>" + esc(when) + "</td><td><span class=\"pill\">" + esc(ev.event) +
+      "</span></td><td>" + esc(ev.business) + "</td><td>" + esc(ev.category) +
+      "</td><td>" + esc(ev.rating || "") + "</td><td>" + esc(ev.lang || "") +
+      "</td><td>" + esc(ev.len || "") + "</td><td class=\"txt\">" + esc(ev.text || "") + "</td></tr>";
+  }).join("");
+
+  content.innerHTML =
+    '<div class="card"><h2>Per business</h2><div class="table-scroll"><table>' +
+    "<tr><th>Business</th><th>Scans</th><th>Ratings</th><th>Avg rating</th><th>Reviews kept</th><th>Google clicks</th><th>Private feedback</th><th>Scan→Google</th></tr>" +
+    (summaryRows || "<tr><td colspan=8>No events yet — scan a QR and the funnel appears here.</td></tr>") +
+    "</table></div></div>" +
+    '<div class="card"><h2>Recent events</h2><div class="table-scroll"><table>' +
+    "<tr><th>Time</th><th>Event</th><th>Business</th><th>Category</th><th>Rating</th><th>Lang</th><th>Len</th><th>Kept review text</th></tr>" +
+    (evRows || "<tr><td colspan=8>Nothing logged yet.</td></tr>") +
+    "</table></div></div>" +
+    '<button onclick="location.reload()">↻ Refresh</button>';
+})();
+</script>
+</body>
+</html>

@@ -266,6 +266,20 @@
   }
   .dots i.on{background:var(--accent);transform:scale(1.3)}
   .swipe-hint{text-align:center;font-size:13px;color:var(--muted)}
+  .len-toggle{
+    display:flex;gap:0;align-self:center;
+    border:1px solid var(--line);border-radius:999px;
+    overflow:hidden;background:var(--surface);
+  }
+  .len-toggle button{
+    border:none;background:none;cursor:pointer;
+    font-family:"Figtree",system-ui,sans-serif;
+    font-size:13px;font-weight:600;
+    padding:7px 18px;color:var(--muted);
+  }
+  body.ur .len-toggle button{font-family:"Noto Nastaliq Urdu",sans-serif}
+  .len-toggle button.on{background:var(--accent);color:var(--accent-ink)}
+  .len-toggle button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 
   /* ---------- feedback (low ratings, optional) ---------- */
   .fb-card{
@@ -397,6 +411,10 @@
     </div>
 
     <div class="screen" id="pickArea" hidden>
+      <div class="len-toggle" role="group" aria-label="Review length">
+        <button id="lenDetailedBtn" type="button"></button>
+        <button id="lenShortBtn" type="button"></button>
+      </div>
       <div class="carousel-wrap">
         <button class="nav-arrow prev" id="prevBtn" type="button" aria-label="Previous review">‹</button>
         <div class="carousel" id="carousel">
@@ -443,7 +461,7 @@
 
   /* ================= configuration ================= */
   var qs = new URLSearchParams(location.search);
-  var cfg = { id:"", name:"", placeId:"", logo:"", feedbackEmail:"", privateBelow:0, analyticsUrl:"" };
+  var cfg = { id:"", name:"", placeId:"", logo:"", feedbackEmail:"", privateBelow:0, analyticsUrl:"", category:"", website:"" };
 
   var rid = qs.get("id");
   if (rid){
@@ -460,9 +478,11 @@
   }
   if (qs.get("r") || qs.get("restaurant")) cfg.name = qs.get("r") || qs.get("restaurant");
   if (qs.get("p") || qs.get("placeid")) cfg.placeId = qs.get("p") || qs.get("placeid");
+  if (qs.get("c")) cfg.category = qs.get("c");
 
   var demo = !cfg.name;
-  if (demo) cfg.name = "Demo Bistro";
+  if (demo){ cfg.name = "Demo Bistro"; if (!cfg.category) cfg.category = "restaurant"; }
+  if (!cfg.category) cfg.category = "generic";
 
   /* ================= i18n ================= */
   var STR = {
@@ -476,6 +496,8 @@
       swipeHint:"Swipe or use the arrows · tap the stars above to change your rating",
       use:"Use this review",
       shuffle:"↻ Fresh suggestions",
+      lenDetailed:"Detailed",
+      lenShort:"Short",
       copyOpen:"Copy & open Google Reviews ↗",
       copyOnly:"Copy text only",
       googleNote:"Google doesn’t allow pre-filled reviews, so paste your copied text into the review box that opens. Feel free to tweak it — reviews in your own words are best.",
@@ -501,6 +523,8 @@
       swipeHint:"سوائپ کریں یا تیر استعمال کریں · درجہ بدلنے کے لیے اوپر ستاروں پر ٹیپ کریں",
       use:"یہ ریویو استعمال کریں",
       shuffle:"↻ نئی تجاویز",
+      lenDetailed:"تفصیلی",
+      lenShort:"مختصر",
       copyOpen:"کاپی کریں اور گوگل ریویوز کھولیں ↗",
       copyOnly:"صرف متن کاپی کریں",
       googleNote:"گوگل پہلے سے لکھا ریویو قبول نہیں کرتا، اس لیے کاپی شدہ متن کھلنے والے باکس میں پیسٹ کریں۔ اپنے الفاظ میں تھوڑی تبدیلی ضرور کریں۔",
@@ -520,9 +544,13 @@
 
   /* ================= review fragments ================= */
   /* Reviews are assembled from opener + detail + closer, so each render differs.
-     Google filters duplicate text, so variety matters more than polish here. */
-  var FRAGMENTS = {
+     Google filters duplicate text, so variety matters more than polish here.
+     PACKS hold full fragment sets per category; DETAILS override just the
+     middle sentence for categories that only need domain flavor. Unknown
+     categories fall back to the generic pack. */
+  var PACKS = {
     en: {
+      restaurant: {
       5:{
         open:["Absolutely loved {name}.","What an amazing experience at {name}!","One of the best meals I’ve had in a while.","{name} completely won us over."],
         detail:["The food came out fresh and full of flavor, and the staff made us feel so welcome.","Every dish was spot on, service was quick, and the prices felt fair for the quality.","Warm welcome, clean space, and food that genuinely exceeded expectations.","Generous portions, bold flavors, and a team that clearly cares about their guests."],
@@ -548,8 +576,37 @@
         detail:["Long wait, cold food, and no real apology when we raised it.","The food was not fresh and the service was inattentive from start to finish.","Wrong order, slow service, and poor value.","The place was untidy, the food was poor, and nobody seemed to care."],
         close:["I wouldn’t recommend it based on this visit.","I won’t be returning unless things change.","Management needs to take a serious look.","Hope they see this and improve."]
       }
+      },
+      generic: {
+      5:{
+        open:["Absolutely wonderful experience at {name}.","{name} exceeded all my expectations.","Couldn’t have asked for better service.","{name} really impressed me."],
+        detail:["The staff were friendly, professional, and genuinely helpful from start to finish.","Everything was handled quickly and smoothly, with real attention to detail.","The place was clean and welcoming, and the whole team clearly cares about their customers.","Great value, great people, and a genuinely pleasant experience throughout."],
+        close:["Highly recommend to anyone nearby.","I’ll definitely be coming back.","Five stars, easily.","Don’t hesitate — this place is worth it."]
+      },
+      4:{
+        open:["Very good experience at {name}.","{name} did a solid job.","Happy with my visit overall.","Good service and a pleasant visit."],
+        detail:["Staff were helpful and everything went smoothly, with just a minor wait.","Professional service at a fair price — a couple of small things could be improved.","Clean, organized, and welcoming; not flawless, but close.","Good attention and quality overall, though it got a bit busy."],
+        close:["Would recommend.","I’d come back again.","Four solid stars.","Worth a visit."]
+      },
+      3:{
+        open:["My experience at {name} was okay.","Average visit to {name}.","Neither great nor bad, honestly.","{name} was just okay for me."],
+        detail:["Some things were handled well, others could clearly be better.","Service was fine but slower than I expected.","The basics were covered, but nothing stood out.","Reasonable prices, average service — room to improve."],
+        close:["Might give it another chance.","Hoping it’s better next time.","Three stars feels fair.","There’s potential here."]
+      },
+      2:{
+        open:["Disappointing experience at {name}.","Expected more from {name}.","Below average visit, sadly.","Not what I was hoping for."],
+        detail:["Long waits and not much attention to customers.","Service felt disorganized and I had to follow up repeatedly.","The quality didn’t match the price at all.","Staff seemed overwhelmed and it showed in the service."],
+        close:["I hope this was a one-off.","Needs attention from management.","Two stars for now.","Hoping they improve."]
+      },
+      1:{
+        open:["Very poor experience at {name}.","One star, unfortunately.","A really frustrating visit.","{name} let me down badly."],
+        detail:["Poor service, long waits, and no real effort to make it right.","Nobody seemed to take responsibility when things went wrong.","Disorganized, unprofessional, and not worth the money.","From start to finish, nothing went as it should have."],
+        close:["I won’t be returning unless things change.","I can’t recommend this place based on my visit.","Management seriously needs to step in.","Hope they take this feedback seriously."]
+      }
+      }
     },
     ur: {
+      restaurant: {
       5:{
         open:["{name} میں کھانا واقعی لاجواب تھا۔","{name} میں شاندار تجربہ رہا۔","بہت ہی عمدہ جگہ ہے۔"],
         detail:["ذائقہ، صفائی اور سروس سب کچھ بہترین تھا۔","عملہ خوش اخلاق تھا اور آرڈر وقت پر ملا۔","ماحول بہت اچھا تھا اور کھانا تازہ اور گرم ملا۔"],
@@ -575,6 +632,82 @@
         detail:["کھانا تازہ نہیں تھا اور سروس بھی سست تھی۔","طویل انتظار کے بعد بھی آرڈر غلط ملا۔","صفائی اور معیار دونوں ناقص تھے۔"],
         close:["انتظامیہ کو توجہ دینی چاہیے۔","دوبارہ نہیں آؤں گا۔","ایک ستارہ۔"]
       }
+      },
+      generic: {
+      5:{
+        open:["{name} میں بہت شاندار تجربہ رہا۔","{name} نے توقع سے بڑھ کر خدمت کی۔","بہترین سروس اور بہترین لوگ۔"],
+        detail:["عملہ خوش اخلاق اور پیشہ ور تھا اور ہر کام وقت پر ہوا۔","صفائی، معیار اور خدمت سب کچھ عمدہ تھا۔","ہر مرحلے پر خیال رکھا گیا اور کوئی پریشانی نہیں ہوئی۔"],
+        close:["سب کو مشورہ دوں گا۔","دوبارہ ضرور آؤں گا۔","پانچ ستارے!"]
+      },
+      4:{
+        open:["{name} میں اچھا تجربہ رہا۔","مجموعی طور پر اچھی سروس ملی۔","اپنی وزٹ سے مطمئن ہوں۔"],
+        detail:["عملہ مددگار تھا، بس تھوڑا انتظار کرنا پڑا۔","مناسب قیمت پر اچھی خدمت ملی، کچھ چیزیں بہتر ہو سکتی ہیں۔","جگہ صاف ستھری اور منظم تھی۔"],
+        close:["سفارش کروں گا۔","دوبارہ آنے کا ارادہ ہے۔","چار ستارے۔"]
+      },
+      3:{
+        open:["{name} کا تجربہ ٹھیک ٹھاک رہا۔","اوسط درجے کی سروس ملی۔","نہ بہت اچھا، نہ برا۔"],
+        detail:["کچھ کام اچھے ہوئے، کچھ میں بہتری کی گنجائش ہے۔","سروس ٹھیک تھی مگر توقع سے سست۔","بنیادی چیزیں ٹھیک تھیں مگر کوئی خاص بات نہیں۔"],
+        close:["شاید دوبارہ موقع دوں۔","بہتری کی امید ہے۔","تین ستارے۔"]
+      },
+      2:{
+        open:["توقع سے کم تجربہ رہا۔","{name} سے مایوسی ہوئی۔","سروس خاص نہیں تھی۔"],
+        detail:["انتظار طویل تھا اور گاہکوں پر توجہ کم۔","بار بار یاد دہانی کرانی پڑی۔","قیمت کے حساب سے معیار کم لگا۔"],
+        close:["امید ہے بہتری آئے گی۔","انتظامیہ کو توجہ دینی چاہیے۔","دو ستارے۔"]
+      },
+      1:{
+        open:["بہت برا تجربہ رہا۔","افسوس، {name} نے مایوس کیا۔","ایک ستارہ، بدقسمتی سے۔"],
+        detail:["ناقص سروس اور کسی نے ذمہ داری نہیں لی۔","بدنظمی اور غیر پیشہ ورانہ رویہ دیکھنے کو ملا۔","پیسے کے حساب سے بالکل نامناسب۔"],
+        close:["دوبارہ نہیں آؤں گا۔","سفارش نہیں کر سکتا۔","امید ہے اس پر توجہ دی جائے گی۔"]
+      }
+      }
+    }
+  };
+
+  /* Category-specific middle sentences (English; Urdu falls back to generic). */
+  var DETAILS = {
+    en: {
+      clinic: {
+        5:["The doctor listened carefully, explained everything clearly, and the staff were kind and professional.","My appointment ran on time, the facility was spotless, and I felt genuinely cared for.","From reception to consultation, the whole team was courteous and thorough."],
+        4:["Good consultation and caring staff, though the waiting room was a bit busy.","The doctor was thorough and professional; just a short wait past my appointment time.","Clean facility and helpful staff — booking could be a little smoother."],
+        3:["The consultation was fine, but the wait was longer than expected.","Staff were polite, though the process felt a bit rushed.","Decent care, but follow-up communication could be better."],
+        2:["Long wait past my appointment time and the visit felt rushed.","Reception was disorganized and I had to chase my reports.","The consultation felt hurried and my questions weren’t really answered."],
+        1:["Waited very long despite an appointment, and the staff were dismissive.","Poor communication, a rushed consultation, and no follow-up.","The facility didn’t feel well managed and my concerns were brushed aside."]
+      },
+      salon: {
+        5:["My stylist listened to exactly what I wanted and absolutely delivered.","Relaxing atmosphere, a skilled team, and I walked out feeling great.","Clean stations, friendly staff, and real attention to detail."],
+        4:["Great result and friendly staff, just a short wait for my slot.","Skilled work at a fair price; booking could be a touch easier.","Nice atmosphere and a good result, though it got busy."],
+        3:["The result was okay, but not quite what I asked for.","Decent service, though the wait was longer than expected.","Fine for the basics, nothing special."],
+        2:["The result wasn’t what I asked for and it took a long time.","It felt rushed and the finish showed it.","Overpriced for the quality of work I received."],
+        1:["The result was far from what I asked for, and nobody seemed to care.","Unhygienic stations and careless work.","A waste of time and money, sadly."]
+      },
+      gym: {
+        5:["Great equipment, clean facilities, and genuinely helpful trainers.","The trainers actually pay attention and the machines are well maintained.","A motivating atmosphere with everything you need for a proper workout."],
+        4:["Good equipment and helpful staff, though it gets crowded at peak hours.","Well maintained overall; the locker rooms could be a bit cleaner.","A solid gym at a fair price — just busy in the evenings."],
+        3:["The equipment is okay but some machines need maintenance.","Decent space, though it gets too crowded to train properly.","Fine for the basics, but don’t expect much guidance."],
+        2:["Several machines out of order and nobody seems to fix them.","Overcrowded, and the cleanliness could be much better.","Staff pay little attention once you’ve signed up."],
+        1:["Broken equipment, poor hygiene, and zero attention from staff.","Nothing like what was promised when I signed up.","Cancelling my membership felt like the only option."]
+      },
+      hotel: {
+        5:["Spotless room, comfortable bed, and staff who went out of their way to help.","Smooth check-in, a great location, and genuinely warm hospitality.","Everything from housekeeping to breakfast was excellent."],
+        4:["A comfortable stay and friendly staff; the room could use minor updating.","Great location and service, though check-in took a little while.","Clean and well run overall — breakfast could offer more variety."],
+        3:["The room was okay, but housekeeping was inconsistent.","A decent stay for the price, though noise was an issue.","Fine for a night, nothing memorable."],
+        2:["The room didn’t match the photos and the AC barely worked.","Slow service and a check-in that took far too long.","Cleanliness fell short of what you’d expect at this price."],
+        1:["A dirty room, indifferent staff, and problems that never got fixed.","Nothing matched what was advertised.","One of the worst stays I’ve had."]
+      },
+      shop: {
+        5:["Great selection, fair prices, and staff who actually help you find what you need.","Quality products and quick, friendly checkout.","The staff went out of their way to help — rare these days."],
+        4:["A good range at fair prices; checkout queues can get long.","Helpful staff and decent stock, though a few items were unavailable.","A nice store overall — parking is the only hassle."],
+        3:["An average selection and the prices aren’t anything special.","Okay for basics, but staff were hard to find when I needed help.","Some good deals, but stock is hit or miss."],
+        2:["Limited stock and staff who couldn’t answer basic questions.","Prices higher than nearby options for the same items.","Long queues and not enough staff at the counters."],
+        1:["Rude staff, wrong pricing at the till, and no interest in fixing it.","They sold me a faulty item and made returning it a battle.","A complete lack of customer service."]
+      },
+      auto: {
+        5:["Honest diagnosis, a fair price, and the car came back running perfectly.","They explained the work clearly, finished on time, and charged what they quoted.","Skilled mechanics who clearly know what they’re doing."],
+        4:["Good work at a fair price, though it took a bit longer than promised.","Reliable service; communication about timing could be better.","The repair was done well — booking a slot took some back and forth."],
+        3:["The work got done, but it took longer and cost more than quoted.","The issue was fixed but a new rattle appeared.","Okay for routine work, less sure about complex jobs."],
+        2:["The problem came back within days of the repair.","I was quoted one price and charged another.","Slow turnaround and vague answers about what was actually done."],
+        1:["I paid for repairs that clearly weren’t done properly.","The car came back worse than it went in.","Overcharged, delayed, and nobody takes responsibility."]
+      }
     }
   };
 
@@ -582,7 +715,7 @@
   function track(event, extra){
     if (!cfg.analyticsUrl) return;
     try{
-      var payload = { event:event, restaurant:cfg.id || cfg.name, lang:lang, t:Date.now() };
+      var payload = { event:event, business:cfg.id || cfg.name, category:cfg.category, lang:lang, t:Date.now() };
       if (extra) Object.keys(extra).forEach(function(k){ payload[k] = extra[k]; });
       var body = JSON.stringify(payload);
       if (navigator.sendBeacon) navigator.sendBeacon(cfg.analyticsUrl, body);
@@ -600,10 +733,14 @@
       editor=$("editor"), charCount=$("charCount"), toast=$("toast");
   var stepEls = { rate:$("stepRate"), pick:$("stepPick"), post:$("stepPost") };
 
-  /* ================= language ================= */
+  /* ================= language & length preferences ================= */
   var lang = "en";
   try{ lang = localStorage.getItem("tapreview_lang") || "en"; }catch(e){}
   if (lang !== "en" && lang !== "ur") lang = "en";
+
+  var lenMode = "detailed";
+  try{ lenMode = localStorage.getItem("tapreview_len") || "detailed"; }catch(e){}
+  if (lenMode !== "short") lenMode = "detailed";
 
   function T(){ return STR[lang]; }
   function fmt(v){ return (v % 1 === 0) ? String(v) : v.toFixed(1); }
@@ -623,6 +760,8 @@
     rateHint.textContent = rating ? hintFor(rating) : T().hintDefault;
     $("swipeHint").textContent = T().swipeHint;
     $("shuffleBtn").textContent = T().shuffle;
+    $("lenDetailedBtn").textContent = T().lenDetailed;
+    $("lenShortBtn").textContent = T().lenShort;
     $("copyOpenBtn").textContent = T().copyOpen;
     $("copyBtn").textContent = T().copyOnly;
     $("googleNote").textContent = T().googleNote;
@@ -642,6 +781,22 @@
   }
   $("langEn").addEventListener("click", function(){ setLang("en"); });
   $("langUr").addEventListener("click", function(){ setLang("ur"); });
+
+  function paintLenToggle(){
+    $("lenDetailedBtn").classList.toggle("on", lenMode === "detailed");
+    $("lenShortBtn").classList.toggle("on", lenMode === "short");
+  }
+  function setLen(m){
+    if (m === lenMode) return;
+    lenMode = m;
+    try{ localStorage.setItem("tapreview_len", m); }catch(e){}
+    paintLenToggle();
+    if (rating && !pickArea.hidden) buildCarousel(rating);
+    track("length", {len:m});
+  }
+  $("lenDetailedBtn").addEventListener("click", function(){ setLen("detailed"); });
+  $("lenShortBtn").addEventListener("click", function(){ setLen("short"); });
+  paintLenToggle();
 
   /* ================= header ================= */
   $("restaurantName").textContent = cfg.name;
@@ -736,10 +891,19 @@
     var hi = Math.max(1, Math.min(5, Math.ceil(v)));
     return (lo === hi) ? [lo] : [hi, lo];
   }
+  function packFor(tier){
+    var packs = PACKS[lang];
+    var base = (packs[cfg.category] || packs.generic)[tier];
+    var d = (DETAILS[lang] && DETAILS[lang][cfg.category] && DETAILS[lang][cfg.category][tier]) || base.detail;
+    return { open: base.open, detail: d, close: base.close };
+  }
   function makeReview(tier){
-    var f = FRAGMENTS[lang][tier];
+    var f = packFor(tier);
     var pick = function(a){ return a[Math.floor(Math.random()*a.length)]; };
-    return [pick(f.open), pick(f.detail), pick(f.close)].join(" ").split("{name}").join(cfg.name);
+    var parts = (lenMode === "short")
+      ? [pick(f.open), pick(f.close)]
+      : [pick(f.open), pick(f.detail), pick(f.close)];
+    return parts.join(" ").split("{name}").join(cfg.name);
   }
   function genReviews(v, n){
     var tiers = tiersFor(v);
@@ -865,7 +1029,7 @@
     editor.value = text;
     updateCount();
     show("post");
-    track("pick");
+    track("pick", {rating:rating, len:lenMode, text:text.slice(0,300)});
   }
   function updateCount(){ charCount.textContent = editor.value.length + " " + T().chars; }
   editor.addEventListener("input", updateCount);
@@ -908,7 +1072,7 @@
 
   $("copyBtn").addEventListener("click", function(){
     copyAsync();
-    track("copy", {rating:rating});
+    track("copy", {rating:rating, len:lenMode, text:editor.value.slice(0,300)});
   });
   $("copyOpenBtn").addEventListener("click", function(){
     var ok = copySync();
@@ -918,7 +1082,7 @@
     }
     showToast(ok ? T().copied : T().copyFail);
     window.open(googleUrl(), "_blank", "noopener");
-    track("google_click", {rating:rating});
+    track("google_click", {rating:rating, len:lenMode, text:editor.value.slice(0,300)});
   });
 
   /* ================= init ================= */
