@@ -17,7 +17,8 @@
       "placeId": "",
       "logo": "",
       "feedbackEmail": "",
-      "privateBelow": 0
+      "privateBelow": 0,
+      "theme": { "accent": "#2563EB", "mode": "" }
     }
   }
 }

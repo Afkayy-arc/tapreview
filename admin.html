@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TapReview · Business Admin</title>
+<style>
+  :root{
+    --bg:#FAF7F2; --surface:#FFFFFF; --ink:#241D16; --muted:#6E6259;
+    --line:#E7DFD4; --accent:#1E6B4E; --accent-soft:#E4F0EA; --accent-ink:#FFFFFF;
+    --star:#E8A23C;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#171310; --surface:#211C17; --ink:#F2EBE2; --muted:#A3968A;
+      --line:#372F27; --accent:#3FA97C; --accent-soft:#20302A; --accent-ink:#0F1512;
+      --star:#F0B356;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#171310; --surface:#211C17; --ink:#F2EBE2; --muted:#A3968A;
+    --line:#372F27; --accent:#3FA97C; --accent-soft:#20302A; --accent-ink:#0F1512;
+    --star:#F0B356;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:14px; line-height:1.5; padding:24px 18px 60px;
+  }
+  .wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+  h1{font-size:24px;margin:0}
+  h2{font-size:16px;margin:0}
+  p.lead{color:var(--muted);margin:0;font-size:14px}
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:16px;
+    padding:18px; display:flex; flex-direction:column; gap:12px;
+  }
+  label{font-size:13px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px}
+  input{
+    width:100%; padding:11px 13px; border-radius:10px;
+    border:1px solid var(--line); background:var(--bg); color:var(--ink);
+    font-size:15px; font-family:inherit;
+  }
+  input:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .row{display:flex;gap:10px}
+  .row>div{flex:1}
+  button{
+    border:none; border-radius:12px; padding:12px 18px; cursor:pointer;
+    font-family:inherit; font-size:15px; font-weight:600;
+    background:var(--accent); color:var(--accent-ink); align-self:flex-start;
+  }
+  button.secondary{background:var(--surface);color:var(--ink);border:1px solid var(--line);font-size:13px;padding:8px 14px}
+  .summary{display:flex;flex-wrap:wrap;gap:10px}
+  .summary div{
+    flex:1 1 100px; background:var(--bg); border:1px solid var(--line);
+    border-radius:12px; padding:10px 14px; min-width:100px;
+  }
+  .summary b{display:block;font-size:22px;font-variant-numeric:tabular-nums}
+  .summary span{font-size:12px;color:var(--muted)}
+  .table-scroll{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);font-size:13px;white-space:nowrap;vertical-align:top}
+  td.txt{white-space:normal;min-width:240px;color:var(--muted)}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+  .stars{color:var(--star);letter-spacing:1px}
+  .bar{height:8px;background:var(--accent);border-radius:4px;min-width:2px;display:inline-block;vertical-align:middle}
+  pre{
+    background:var(--bg); border:1px solid var(--line); border-radius:12px;
+    padding:12px; font-size:12px; overflow-x:auto; margin:0;
+    white-space:pre-wrap; word-break:break-all;
+  }
+  .err{color:#B4463C}
+  .muted{color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="title">Business admin</h1>
+  <p class="lead">Your reviews funnel — scans, ratings, kept reviews, and Google clicks for your business only.</p>
+
+  <div class="card" id="loginCard">
+    <div class="row">
+      <div>
+        <label for="biz">Business ID</label>
+        <input id="biz" placeholder="demo">
+      </div>
+      <div>
+        <label for="key">Access key</label>
+        <input id="key" placeholder="given to you by TapReview">
+      </div>
+    </div>
+    <button id="loadBtn" type="button">View dashboard</button>
+    <div class="muted">Tip: bookmark the link with <code>?business=…&amp;key=…</code> to skip this form.</div>
+  </div>
+
+  <div id="content"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var content = $("content");
+
+  function esc(s){
+    var d = document.createElement("div");
+    d.textContent = s == null ? "" : String(s);
+    return d.innerHTML;
+  }
+
+  var qs = new URLSearchParams(location.search);
+  var saved = {};
+  try{ saved = JSON.parse(localStorage.getItem("tapreview_admin") || "{}"); }catch(e){}
+  $("biz").value = qs.get("business") || saved.business || "";
+  $("key").value = qs.get("key") || saved.key || "";
+
+  $("loadBtn").addEventListener("click", load);
+  if ($("biz").value && $("key").value) load();
+
+  async function load(){
+    var business = $("biz").value.trim();
+    var key = $("key").value.trim();
+    if (!business || !key){ content.innerHTML = '<div class="card err">Enter your business ID and access key.</div>'; return; }
+    try{ localStorage.setItem("tapreview_admin", JSON.stringify({business:business, key:key})); }catch(e){}
+    content.innerHTML = '<div class="card">Loading…</div>';
+
+    var analyticsUrl = "";
+    try{
+      var reg = await (await fetch("restaurants.json", {cache:"no-store"})).json();
+      analyticsUrl = reg.analyticsUrl || "";
+    }catch(e){}
+    if (!analyticsUrl){
+      content.innerHTML = '<div class="card err">Logging isn’t connected on this TapReview install yet — ask the site owner to configure <code>analyticsUrl</code>.</div>';
+      return;
+    }
+
+    var events = [];
+    try{
+      var sep = analyticsUrl.indexOf("?") === -1 ? "?" : "&";
+      var res = await fetch(analyticsUrl + sep + "business=" + encodeURIComponent(business) + "&key=" + encodeURIComponent(key) + "&limit=1000");
+      var data = await res.json();
+      if (data.error){
+        content.innerHTML = '<div class="card err">Access denied — check your business ID and key.</div>';
+        return;
+      }
+      events = data.events || [];
+    }catch(e){
+      content.innerHTML = '<div class="card err">Couldn’t reach the log endpoint.</div>';
+      return;
+    }
+
+    $("title").textContent = business + " — admin";
+
+    /* funnel */
+    var f = {scans:0, rates:0, ratingSum:0, ratingN:0, picks:0, google:0, feedback:0};
+    var dist = {1:0,2:0,3:0,4:0,5:0};
+    events.forEach(function(ev){
+      if (ev.event === "scan") f.scans++;
+      if (ev.event === "rate"){
+        f.rates++;
+        var r = Number(ev.rating);
+        if (r){ f.ratingSum += r; f.ratingN++; dist[Math.max(1,Math.min(5,Math.round(r)))]++; }
+      }
+      if (ev.event === "pick") f.picks++;
+      if (ev.event === "google_click") f.google++;
+      if (ev.event === "feedback_send") f.feedback++;
+    });
+    var avg = f.ratingN ? (f.ratingSum/f.ratingN).toFixed(1) : "—";
+    var conv = f.scans ? Math.round(f.google/f.scans*100) + "%" : "—";
+
+    var maxDist = Math.max.apply(null, [1].concat(Object.keys(dist).map(function(k){ return dist[k]; })));
+    var distRows = [5,4,3,2,1].map(function(s){
+      var w = Math.round(dist[s]/maxDist*160);
+      return "<tr><td class=\"stars\">" + "★".repeat(s) + "</td><td><span class=\"bar\" style=\"width:" + w + "px\"></span> " + dist[s] + "</td></tr>";
+    }).join("");
+
+    /* kept reviews (deduped, newest first) */
+    var seen = {};
+    var kept = events.filter(function(ev){
+      if (ev.event !== "google_click" && ev.event !== "copy" && ev.event !== "pick") return false;
+      if (!ev.text || seen[ev.text]) return false;
+      seen[ev.text] = 1;
+      return true;
+    }).slice(0, 30);
+    var keptRows = kept.map(function(ev){
+      var when = ev.time ? new Date(ev.time).toLocaleDateString() : "";
+      return "<tr><td>" + esc(when) + "</td><td>" + esc(ev.rating || "") + " ★</td><td class=\"txt\">" + esc(ev.text) + "</td></tr>";
+    }).join("");
+
+    /* embed snippets */
+    var base = location.href.replace(/admin\.html.*$/, "");
+    var iframeSnippet = '<iframe src="' + base + '?id=' + business + '&embed=1"\n  style="width:100%;max-width:430px;height:620px;border:0;border-radius:16px"\n  title="Leave us a review"></iframe>';
+    var widgetSnippet = '<script src="' + base + 'widget.js" data-business="' + business + '"><\/script>';
+
+    content.innerHTML =
+      '<div class="card"><h2>Funnel</h2><div class="summary">' +
+      '<div><b>' + f.scans + '</b><span>Scans</span></div>' +
+      '<div><b>' + f.rates + '</b><span>Ratings</span></div>' +
+      '<div><b>' + avg + '</b><span>Avg rating</span></div>' +
+      '<div><b>' + f.picks + '</b><span>Reviews kept</span></div>' +
+      '<div><b>' + f.google + '</b><span>Google clicks</span></div>' +
+      '<div><b>' + conv + '</b><span>Scan → Google</span></div>' +
+      (f.feedback ? '<div><b>' + f.feedback + '</b><span>Private feedback</span></div>' : '') +
+      '</div></div>' +
+      '<div class="card"><h2>Rating distribution</h2><div class="table-scroll"><table>' + distRows + '</table></div></div>' +
+      '<div class="card"><h2>Reviews your customers kept</h2><div class="table-scroll"><table>' +
+      '<tr><th>Date</th><th>Rating</th><th>Text</th></tr>' +
+      (keptRows || '<tr><td colspan=3>None yet.</td></tr>') +
+      '</table></div></div>' +
+      '<div class="card"><h2>Add TapReview to your website</h2>' +
+      '<label>Floating “Rate us” button (one line, before &lt;/body&gt;)</label><pre id="snipW">' + esc(widgetSnippet) + '</pre>' +
+      '<button class="secondary" data-copy="snipW" type="button">Copy</button>' +
+      '<label>Or embed the flow inline</label><pre id="snipI">' + esc(iframeSnippet) + '</pre>' +
+      '<button class="secondary" data-copy="snipI" type="button">Copy</button>' +
+      '<div class="muted">Customize with <code>data-accent="#yourcolor"</code>, <code>data-theme="dark"</code>, <code>data-lang="ur"</code>, <code>data-label="…"</code>, <code>data-position="left"</code>.</div>' +
+      '</div>' +
+      '<button class="secondary" onclick="location.reload()" type="button">↻ Refresh</button>';
+
+    content.querySelectorAll("button[data-copy]").forEach(function(b){
+      b.addEventListener("click", function(){
+        var text = document.getElementById(b.getAttribute("data-copy")).textContent;
+        if (navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(text).then(function(){ b.textContent = "Copied ✓"; });
+        }
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>

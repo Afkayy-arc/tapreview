@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TapReview · Embed Demo</title>
+<style>
+  /* A fake client website, to show the widget in context. */
+  body{
+    margin:0; font-family:Georgia,serif; color:#2A2622; background:#FFFDF9;
+    line-height:1.6;
+  }
+  .hero{
+    background:#2563EB; color:#fff; padding:60px 24px; text-align:center;
+    font-family:system-ui,sans-serif;
+  }
+  .hero h1{margin:0 0 8px;font-size:34px}
+  .hero p{margin:0;opacity:.85}
+  .content{max-width:640px;margin:0 auto;padding:40px 24px 120px}
+  h2{font-family:system-ui,sans-serif}
+  .note{
+    background:#F0F4FF; border:1px solid #D8E2FA; border-radius:12px;
+    padding:14px 18px; font-family:system-ui,sans-serif; font-size:14px;
+  }
+  code{background:#F4EFE7;padding:1px 6px;border-radius:6px;font-size:13px}
+</style>
+</head>
+<body>
+  <div class="hero">
+    <h1>Smile Dental Care</h1>
+    <p>This is a pretend client website — scroll down for the inline embed, or use the floating button.</p>
+  </div>
+  <div class="content">
+    <h2>About us</h2>
+    <p>Filler content standing in for a real business site. The blue “⭐ Rate us” button floating at the bottom right comes from one script tag; it opens the TapReview flow in a modal, themed to the client's brand color.</p>
+    <div class="note">
+      This page uses:<br>
+      <code>&lt;script src="widget.js" data-business="demo-clinic" data-accent="#2563EB"&gt;&lt;/script&gt;</code><br>
+      and an inline embed via <code>data-display="inline"</code> below.
+    </div>
+
+    <h2>Tell us how we did</h2>
+    <div id="tapreview"></div>
+  </div>
+
+  <!-- Inline embed -->
+  <script src="widget.js" data-business="demo-clinic" data-accent="#2563EB"
+          data-display="inline" data-target="#tapreview"></script>
+  <!-- Floating launcher -->
+  <script src="widget.js" data-business="demo-clinic" data-accent="#2563EB"
+          data-label="⭐ Rate us"></script>
+</body>
+</html>

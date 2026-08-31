@@ -97,10 +97,32 @@
     return;
   }
 
+  /* master key (reads are key-protected; per-business admins use admin.html) */
+  var masterKey = "";
+  try{ masterKey = localStorage.getItem("tapreview_master_key") || ""; }catch(e){}
+  var qsKey = new URLSearchParams(location.search).get("key");
+  if (qsKey) masterKey = qsKey;
+
+  function askKey(msg){
+    content.innerHTML =
+      '<div class="card"><h2>Master key</h2>' + (msg ? '<div class="err">' + esc(msg) + '</div>' : '') +
+      '<p class="lead">Enter the MASTER_KEY you set in the Apps Script to view all businesses.</p>' +
+      '<input id="mk" style="width:100%;padding:11px 13px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:15px" placeholder="master key">' +
+      '<button id="mkBtn">View logs</button></div>';
+    document.getElementById("mkBtn").addEventListener("click", function(){
+      try{ localStorage.setItem("tapreview_master_key", document.getElementById("mk").value.trim()); }catch(e){}
+      location.reload();
+    });
+  }
+  if (!masterKey){ askKey(""); return; }
+  try{ localStorage.setItem("tapreview_master_key", masterKey); }catch(e){}
+
   var events = [];
   try{
-    var res = await fetch(analyticsUrl + (analyticsUrl.indexOf("?")===-1 ? "?" : "&") + "limit=500");
-    events = (await res.json()).events || [];
+    var res = await fetch(analyticsUrl + (analyticsUrl.indexOf("?")===-1 ? "?" : "&") + "limit=500&key=" + encodeURIComponent(masterKey));
+    var data = await res.json();
+    if (data.error){ askKey("That key was rejected — check MASTER_KEY in the Apps Script."); return; }
+    events = data.events || [];
   }catch(e){
     content.innerHTML = '<div class="card err">Couldn’t reach the log endpoint (' + esc(analyticsUrl) + '). Check the Apps Script deployment is set to “Anyone”.</div>';
     return;

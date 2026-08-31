@@ -40,11 +40,47 @@ Then open `qr.html` on the deployed site to generate and download a printable QR
 
 The app also works without the registry via raw URL params: `?r=Business%20Name&p=PLACE_ID&c=clinic`.
 
+## Embedding on a business website
+
+Businesses don't need the QR — they can put the flow on their own site.
+
+**Floating "Rate us" button** (one line before `</body>`):
+
+```html
+<script src="https://afkayy-arc.github.io/tapreview/widget.js" data-business="demo"></script>
+```
+
+**Inline embed** (renders the flow inside the page):
+
+```html
+<div id="tapreview"></div>
+<script src="https://afkayy-arc.github.io/tapreview/widget.js"
+        data-business="demo" data-display="inline" data-target="#tapreview"></script>
+```
+
+Widget options: `data-accent="#2563EB"` (brand color), `data-theme="light|dark"`, `data-lang="en|ur"`, `data-label="…"` (button text), `data-position="left|right"`. The inline embed auto-sizes to its content via postMessage. A plain `<iframe src="…/?id=demo&embed=1">` also works. See `embed-demo.html` for a live example, and each business's `admin.html` shows their ready-made snippets.
+
+## Theming
+
+Per business in `restaurants.json`:
+
+```json
+"theme": { "accent": "#2563EB", "mode": "dark" }
+```
+
+`accent` recolors buttons/highlights (text contrast auto-adjusts); `mode` forces light or dark instead of following the visitor's system. URL params `?accent=2563EB&mode=dark&lang=ur` override, which is how the widget passes options through.
+
+## Per-business admin analytics
+
+Each business gets its own dashboard at `admin.html?business=<id>&key=<their-key>` — funnel, rating distribution, the reviews their customers kept, and their embed snippets. Access keys live in the **keys** sheet of the logging spreadsheet (one row per business: id, key) — hand each client their link.
+
+Reads from the collector are key-protected: business keys only return that business's events; the `MASTER_KEY` set at the top of the Apps Script unlocks the all-business view in `logs.html` (asked for once, remembered in the browser). Event *writes* stay open — visitors' browsers post them anonymously.
+
 ## Logs
 
 `logs.html` on the deployed site shows a per-business funnel (scans → ratings → avg rating → reviews kept → Google clicks → conversion) and a table of recent events including the exact review text each visitor kept.
 
-It reads from the collector endpoint in `analyticsUrl`. One-time setup: create a Google Sheet → Extensions → Apps Script → paste `logging/apps-script.gs` → Deploy as Web app (execute as *Me*, access *Anyone*) → put the `/exec` URL into `"analyticsUrl"` in `restaurants.json`. Until that's configured, `logs.html` shows these setup steps and the app simply doesn't send events.
+It reads from the collector endpoint in `analyticsUrl`. One-time setup: create a Google Sheet → Extensions → Apps Script → paste `logging/apps-script.gs` → **change `MASTER_KEY`** → Deploy as Web app (execute as *Me*, access *Anyone*) → put the `/exec` URL into `"analyticsUrl"` in `restaurants.json`. Until that's configured, `logs.html` shows these setup steps and the app simply doesn't send events.
 
 ## Low-rating routing (off by default)
 
