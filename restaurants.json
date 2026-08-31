@@ -1,0 +1,12 @@
+{
+  "analyticsUrl": "",
+  "restaurants": {
+    "demo": {
+      "name": "Demo Bistro",
+      "placeId": "",
+      "logo": "",
+      "feedbackEmail": "",
+      "privateBelow": 0
+    }
+  }
+}

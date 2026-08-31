@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#FAF7F2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171310" media="(prefers-color-scheme: dark)">
+<title>TapReview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Figtree:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;600&display=swap">
+<style>
+  :root{
+    --bg:#FAF7F2;
+    --surface:#FFFFFF;
+    --ink:#241D16;
+    --muted:#6E6259;
+    --line:#E7DFD4;
+    --accent:#1E6B4E;
+    --accent-soft:#E4F0EA;
+    --accent-ink:#FFFFFF;
+    --star:#E8A23C;
+    --star-empty:#DDD3C6;
+    --shadow:0 10px 30px rgba(36,29,22,.08);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#171310;
+      --surface:#211C17;
+      --ink:#F2EBE2;
+      --muted:#A3968A;
+      --line:#372F27;
+      --accent:#3FA97C;
+      --accent-soft:#20302A;
+      --accent-ink:#0F1512;
+      --star:#F0B356;
+      --star-empty:#3B342C;
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#171310;
+    --surface:#211C17;
+    --ink:#F2EBE2;
+    --muted:#A3968A;
+    --line:#372F27;
+    --accent:#3FA97C;
+    --accent-soft:#20302A;
+    --accent-ink:#0F1512;
+    --star:#F0B356;
+    --star-empty:#3B342C;
+    --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:16px;
+    line-height:1.55;
+    min-height:100vh;
+  }
+  .wrap{
+    max-width:430px;
+    margin:0 auto;
+    padding:20px 18px 40px;
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+    min-height:100vh;
+  }
+
+  /* Urdu text rendering */
+  body.ur h1,
+  body.ur h2,
+  body.ur .rate-hint,
+  body.ur .swipe-hint,
+  body.ur .eyebrow,
+  body.ur .review-card p,
+  body.ur textarea,
+  body.ur .google-note,
+  body.ur .fb-body,
+  body.ur .btn,
+  body.ur .btn-ghost{
+    direction:rtl;
+    font-family:"Noto Nastaliq Urdu","Figtree",serif;
+  }
+  body.ur .review-card p,
+  body.ur textarea,
+  body.ur .google-note,
+  body.ur .fb-body{line-height:2}
+  body.ur .eyebrow{letter-spacing:0}
+
+  /* ---------- header ---------- */
+  header{text-align:center;padding-top:6px;position:relative}
+  .lang-toggle{
+    position:absolute;top:0;right:0;
+    display:flex;gap:0;
+    border:1px solid var(--line);
+    border-radius:999px;
+    overflow:hidden;
+    background:var(--surface);
+  }
+  .lang-toggle button{
+    border:none;background:none;cursor:pointer;
+    font-family:"Figtree",system-ui,sans-serif;
+    font-size:12px;font-weight:600;
+    padding:5px 10px;color:var(--muted);
+  }
+  .lang-toggle button.on{background:var(--accent);color:var(--accent-ink)}
+  .lang-toggle button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  .logo{
+    width:56px;height:56px;border-radius:14px;object-fit:cover;
+    margin-bottom:8px;border:1px solid var(--line);
+  }
+  .eyebrow{
+    font-size:12px;
+    font-weight:600;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  h1{
+    font-family:"Fraunces",Georgia,serif;
+    font-weight:600;
+    font-size:30px;
+    line-height:1.15;
+    margin:6px 0 0;
+    text-wrap:balance;
+  }
+  body.ur h1{font-family:"Noto Nastaliq Urdu",Georgia,serif;line-height:1.9;font-size:26px}
+  .demo-note{
+    margin-top:10px;
+    display:inline-block;
+    font-size:12px;
+    color:var(--muted);
+    background:var(--surface);
+    border:1px dashed var(--line);
+    border-radius:999px;
+    padding:4px 12px;
+  }
+
+  /* ---------- steps ---------- */
+  .steps{
+    display:flex;
+    justify-content:center;
+    gap:6px;
+    font-size:12px;
+    font-weight:600;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+  body.ur .steps{letter-spacing:0;font-family:"Noto Nastaliq Urdu",sans-serif}
+  .steps span{padding:2px 8px;border-radius:999px}
+  .steps .on{background:var(--accent-soft);color:var(--accent)}
+
+  .screen{display:flex;flex-direction:column;gap:18px}
+
+  /* ---------- rating ---------- */
+  .rate-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:20px;
+    box-shadow:var(--shadow);
+    padding:28px 20px 26px;
+    text-align:center;
+  }
+  .rate-card h2{
+    font-family:"Fraunces",Georgia,serif;
+    font-weight:500;
+    font-size:21px;
+    margin:0 0 18px;
+  }
+  body.ur .rate-card h2{font-family:"Noto Nastaliq Urdu",Georgia,serif;line-height:1.9}
+  .starbar{
+    position:relative;
+    display:inline-block;
+    font-size:44px;
+    line-height:1;
+    letter-spacing:6px;
+    color:var(--star-empty);
+    cursor:pointer;
+    user-select:none;
+    -webkit-user-select:none;
+    touch-action:none;
+  }
+  .starbar .fill{
+    position:absolute;left:0;top:0;
+    width:0%;
+    overflow:hidden;
+    white-space:nowrap;
+    color:var(--star);
+    letter-spacing:6px;
+    pointer-events:none;
+  }
+  .starbar:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:10px}
+  .rate-hint{margin-top:14px;font-size:14px;color:var(--muted);min-height:1.5em}
+  .rate-card.compact{
+    padding:12px 16px;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    text-align:left;
+  }
+  .rate-card.compact h2{display:none}
+  .rate-card.compact .starbar{font-size:26px;letter-spacing:3px}
+  .rate-card.compact .starbar .fill{letter-spacing:3px}
+  .rate-card.compact .rate-hint{margin-top:0;font-size:13px;min-height:0;text-align:right;flex:1}
+
+  /* ---------- carousel ---------- */
+  .carousel-wrap{position:relative}
+  .nav-arrow{
+    position:absolute;top:50%;transform:translateY(-50%);
+    width:38px;height:38px;border-radius:50%;
+    border:1px solid var(--line);
+    background:var(--surface);color:var(--ink);
+    font-size:20px;line-height:1;font-family:"Figtree",sans-serif;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;box-shadow:var(--shadow);z-index:2;padding:0 0 2px;
+  }
+  .nav-arrow:disabled{opacity:.3;cursor:default}
+  .nav-arrow.prev{left:6px}
+  .nav-arrow.next{right:6px}
+  .nav-arrow:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .carousel{
+    overflow:hidden;
+    border-radius:20px;
+    touch-action:pan-y;
+  }
+  .track{
+    display:flex;
+    transition:transform .28s cubic-bezier(.22,.8,.3,1);
+  }
+  .track.dragging{transition:none}
+  .review-card{
+    flex:0 0 100%;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:20px;
+    box-shadow:var(--shadow);
+    padding:22px 52px 20px;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+  .review-card .stars-static{font-size:16px;display:flex;align-items:center;gap:8px}
+  .review-card .stars-static .num{font-size:13px;font-weight:700;color:var(--muted);font-family:"Figtree",sans-serif}
+  .mini-stars{position:relative;display:inline-block;color:var(--star-empty);letter-spacing:2px}
+  .mini-stars .fill{
+    position:absolute;left:0;top:0;
+    overflow:hidden;white-space:nowrap;
+    color:var(--star);letter-spacing:2px;pointer-events:none;
+  }
+  .review-card p{
+    margin:0;
+    font-size:16.5px;
+    line-height:1.6;
+    flex:1;
+  }
+  .dots{display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
+  .dots i{
+    width:7px;height:7px;border-radius:50%;
+    background:var(--star-empty);
+    transition:background .15s ease,transform .15s ease;
+  }
+  .dots i.on{background:var(--accent);transform:scale(1.3)}
+  .swipe-hint{text-align:center;font-size:13px;color:var(--muted)}
+
+  /* ---------- feedback (low ratings, optional) ---------- */
+  .fb-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:20px;
+    box-shadow:var(--shadow);
+    padding:24px 20px;
+    display:flex;flex-direction:column;gap:14px;
+  }
+  .fb-card h2{
+    font-family:"Fraunces",Georgia,serif;
+    font-weight:500;font-size:19px;margin:0;text-wrap:balance;
+  }
+  body.ur .fb-card h2{font-family:"Noto Nastaliq Urdu",Georgia,serif;line-height:1.9}
+  .fb-body{font-size:14px;color:var(--muted);margin:0}
+
+  /* ---------- editor ---------- */
+  textarea{
+    width:100%;
+    min-height:150px;
+    resize:vertical;
+    background:var(--surface);
+    color:var(--ink);
+    border:1px solid var(--line);
+    border-radius:16px;
+    box-shadow:var(--shadow);
+    padding:16px;
+    font-family:inherit;
+    font-size:16px;
+    line-height:1.6;
+  }
+  textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .char-count{font-size:12px;color:var(--muted);text-align:right;margin-top:-10px}
+
+  /* ---------- buttons ---------- */
+  .btn{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    width:100%;
+    border-radius:14px;
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--ink);
+    font-family:inherit;
+    font-size:16px;font-weight:600;
+    padding:14px 18px;
+    cursor:pointer;
+    text-decoration:none;
+    transition:transform .1s ease;
+  }
+  .btn:active{transform:scale(.98)}
+  .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .btn-primary{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:var(--accent-ink);
+  }
+  .btn-ghost{
+    background:none;border:none;box-shadow:none;
+    color:var(--muted);font-size:14px;font-weight:500;
+    width:auto;align-self:center;padding:8px 14px;
+    cursor:pointer;font-family:inherit;
+  }
+  .btn-row{display:flex;flex-direction:column;gap:10px}
+
+  .google-note{
+    font-size:13px;color:var(--muted);
+    text-align:center;line-height:1.5;
+    padding:0 8px;
+  }
+
+  /* ---------- toast ---------- */
+  .toast{
+    position:fixed;
+    left:50%;bottom:28px;
+    transform:translate(-50%,20px);
+    background:var(--ink);
+    color:var(--bg);
+    font-size:14px;font-weight:600;
+    padding:10px 18px;
+    border-radius:999px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .2s ease,transform .2s ease;
+    z-index:10;
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+
+  footer{
+    margin-top:auto;
+    text-align:center;
+    font-size:12px;
+    color:var(--muted);
+    padding-top:10px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .track,.btn,.toast,.dots i{transition:none}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="lang-toggle" role="group" aria-label="Language">
+      <button id="langEn" class="on" type="button">EN</button>
+      <button id="langUr" type="button">اردو</button>
+    </div>
+    <img class="logo" id="logo" alt="" hidden>
+    <div class="eyebrow" id="eyebrow">Share your experience at</div>
+    <h1 id="restaurantName">…</h1>
+    <span class="demo-note" id="demoNote" hidden></span>
+  </header>
+
+  <nav class="steps" aria-label="Progress">
+    <span id="stepRate" class="on">Rate</span>
+    <span id="stepPick">Pick</span>
+    <span id="stepPost">Post</span>
+  </nav>
+
+  <!-- rating stays on screen; picker (or private feedback) appears below -->
+  <section class="screen" id="screenHome">
+    <div class="rate-card" id="rateCard">
+      <h2 id="rateTitle">How was your visit?</h2>
+      <div class="starbar" id="starBar" role="slider" tabindex="0" aria-label="Star rating"
+        aria-valuemin="1" aria-valuemax="5">★★★★★<span class="fill" id="starFill" aria-hidden="true">★★★★★</span></div>
+      <div class="rate-hint" id="rateHint"></div>
+    </div>
+
+    <div class="screen" id="pickArea" hidden>
+      <div class="carousel-wrap">
+        <button class="nav-arrow prev" id="prevBtn" type="button" aria-label="Previous review">‹</button>
+        <div class="carousel" id="carousel">
+          <div class="track" id="track"></div>
+        </div>
+        <button class="nav-arrow next" id="nextBtn" type="button" aria-label="Next review">›</button>
+      </div>
+      <div class="dots" id="dots"></div>
+      <div class="swipe-hint" id="swipeHint"></div>
+      <button class="btn-ghost" id="shuffleBtn" type="button"></button>
+    </div>
+
+    <div class="screen" id="feedbackArea" hidden>
+      <div class="fb-card">
+        <h2 id="fbTitle"></h2>
+        <p class="fb-body" id="fbBody"></p>
+        <textarea id="fbText" rows="4"></textarea>
+        <button class="btn btn-primary" id="fbSendBtn" type="button"></button>
+        <button class="btn-ghost" id="fbPublicBtn" type="button"></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- edit, copy, post -->
+  <section class="screen" id="screenPost" hidden>
+    <textarea id="editor" aria-label="Your review"></textarea>
+    <div class="char-count" id="charCount"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="copyOpenBtn" type="button"></button>
+      <button class="btn" id="copyBtn" type="button"></button>
+    </div>
+    <p class="google-note" id="googleNote"></p>
+    <button class="btn-ghost" id="backToPick" type="button"></button>
+  </section>
+
+  <footer>Powered by TapReview</footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(async function(){
+  "use strict";
+
+  /* ================= configuration ================= */
+  var qs = new URLSearchParams(location.search);
+  var cfg = { id:"", name:"", placeId:"", logo:"", feedbackEmail:"", privateBelow:0, analyticsUrl:"" };
+
+  var rid = qs.get("id");
+  if (rid){
+    try{
+      var res = await fetch("restaurants.json", {cache:"no-store"});
+      var data = await res.json();
+      cfg.analyticsUrl = data.analyticsUrl || "";
+      var entry = (data.restaurants || {})[rid];
+      if (entry){
+        Object.keys(entry).forEach(function(k){ cfg[k] = entry[k]; });
+        cfg.id = rid;
+      }
+    }catch(e){ /* registry unavailable; fall through to URL params */ }
+  }
+  if (qs.get("r") || qs.get("restaurant")) cfg.name = qs.get("r") || qs.get("restaurant");
+  if (qs.get("p") || qs.get("placeid")) cfg.placeId = qs.get("p") || qs.get("placeid");
+
+  var demo = !cfg.name;
+  if (demo) cfg.name = "Demo Bistro";
+
+  /* ================= i18n ================= */
+  var STR = {
+    en: {
+      eyebrow:"Share your experience at",
+      demo:"Demo mode — open with ?id=… or ?r=Name&p=PlaceID",
+      steps:["Rate","Pick","Post"],
+      rateTitle:"How was your visit?",
+      hintDefault:"Tap or drag across the stars — halves count too",
+      hints:{1:"Oh no — sorry to hear that",2:"Could’ve been better",3:"An average visit",4:"Pretty good!",5:"Amazing! Glad you loved it"},
+      swipeHint:"Swipe or use the arrows · tap the stars above to change your rating",
+      use:"Use this review",
+      shuffle:"↻ Fresh suggestions",
+      copyOpen:"Copy & open Google Reviews ↗",
+      copyOnly:"Copy text only",
+      googleNote:"Google doesn’t allow pre-filled reviews, so paste your copied text into the review box that opens. Feel free to tweak it — reviews in your own words are best.",
+      backToPick:"← Pick a different review",
+      chars:"characters",
+      copied:"Copied to clipboard ✓",
+      copyFail:"Couldn’t copy — select and copy manually",
+      fbTitle:"Sorry about your experience — tell the restaurant directly",
+      fbBody:"Your feedback goes straight to the owner so they can fix it.",
+      fbPlaceholder:"What went wrong?",
+      fbSend:"Send to the restaurant",
+      fbPublic:"Post on Google instead →",
+      fbSubject:"Customer feedback",
+      starsWord:"stars"
+    },
+    ur: {
+      eyebrow:"اپنا تجربہ شیئر کریں",
+      demo:"ڈیمو موڈ — ?id=… یا ?r=Name&p=PlaceID کے ساتھ کھولیں",
+      steps:["درجہ","انتخاب","پوسٹ"],
+      rateTitle:"آپ کا تجربہ کیسا رہا؟",
+      hintDefault:"ستاروں پر ٹیپ کریں یا انگلی پھیریں — آدھے ستارے بھی چلتے ہیں",
+      hints:{1:"افسوس ہوا",2:"بہتر ہو سکتا تھا",3:"اوسط تجربہ",4:"اچھا تھا!",5:"زبردست! بہت خوب"},
+      swipeHint:"سوائپ کریں یا تیر استعمال کریں · درجہ بدلنے کے لیے اوپر ستاروں پر ٹیپ کریں",
+      use:"یہ ریویو استعمال کریں",
+      shuffle:"↻ نئی تجاویز",
+      copyOpen:"کاپی کریں اور گوگل ریویوز کھولیں ↗",
+      copyOnly:"صرف متن کاپی کریں",
+      googleNote:"گوگل پہلے سے لکھا ریویو قبول نہیں کرتا، اس لیے کاپی شدہ متن کھلنے والے باکس میں پیسٹ کریں۔ اپنے الفاظ میں تھوڑی تبدیلی ضرور کریں۔",
+      backToPick:"دوسرا ریویو منتخب کریں",
+      chars:"حروف",
+      copied:"کلپ بورڈ پر کاپی ہو گیا ✓",
+      copyFail:"کاپی نہیں ہو سکا — خود منتخب کر کے کاپی کریں",
+      fbTitle:"آپ کے تجربے پر افسوس ہے — براہِ راست ریستوران کو بتائیں",
+      fbBody:"آپ کی رائے سیدھی مالک تک پہنچے گی تاکہ بہتری ہو سکے۔",
+      fbPlaceholder:"کیا خرابی ہوئی؟",
+      fbSend:"ریستوران کو بھیجیں",
+      fbPublic:"بہرحال گوگل پر پوسٹ کریں",
+      fbSubject:"گاہک کی رائے",
+      starsWord:"ستارے"
+    }
+  };
+
+  /* ================= review fragments ================= */
+  /* Reviews are assembled from opener + detail + closer, so each render differs.
+     Google filters duplicate text, so variety matters more than polish here. */
+  var FRAGMENTS = {
+    en: {
+      5:{
+        open:["Absolutely loved {name}.","What an amazing experience at {name}!","One of the best meals I’ve had in a while.","{name} completely won us over."],
+        detail:["The food came out fresh and full of flavor, and the staff made us feel so welcome.","Every dish was spot on, service was quick, and the prices felt fair for the quality.","Warm welcome, clean space, and food that genuinely exceeded expectations.","Generous portions, bold flavors, and a team that clearly cares about their guests."],
+        close:["Already planning my next visit!","Highly recommend — don’t think twice, just go.","This place deserves all five stars.","We’ll be back with friends!"]
+      },
+      4:{
+        open:["Really enjoyed my visit to {name}.","Great spot!","Solid experience at {name}.","{name} is a reliable choice."],
+        detail:["The food was delicious and the staff were friendly, with just a short wait during the rush.","Everything was fresh and tasty and the atmosphere was relaxed.","Good portions, fair prices, and attentive service.","The food was very good and service was warm, though seating gets tight at peak times."],
+        close:["Absolutely worth it.","I’d happily come back.","Not quite perfect, but close — recommended.","Will visit again."]
+      },
+      3:{
+        open:["{name} was okay.","Mixed experience at {name}.","Decent but not memorable.","An average visit overall."],
+        detail:["Some dishes were genuinely good, others were just average.","The food had its moments and the staff were polite, but the wait was longer than expected.","The basics were fine — food came out warm and the place was clean — it just didn’t stand out.","Portions were fair and prices reasonable, but the flavors didn’t quite live up to the hype."],
+        close:["Might give it another try on a quieter day.","Room to improve.","Three stars feels right.","Hoping it’s better next time."]
+      },
+      2:{
+        open:["Disappointing visit to {name}.","Expected more from {name}.","Below average, sadly.","Not a great experience."],
+        detail:["The food took a long time and arrived barely warm.","The order came out wrong and the fix took a while.","Service felt rushed and inattentive, and the food was mediocre for the price.","Long wait, small portions, and flavors that missed the mark."],
+        close:["The overall experience fell short.","The place has potential, but it needs attention.","I hope this was just an off day.","Hoping they improve."]
+      },
+      1:{
+        open:["Very disappointing experience at {name}.","Sadly a one-star visit.","Bad experience overall.","Really let down by {name}."],
+        detail:["Long wait, cold food, and no real apology when we raised it.","The food was not fresh and the service was inattentive from start to finish.","Wrong order, slow service, and poor value.","The place was untidy, the food was poor, and nobody seemed to care."],
+        close:["I wouldn’t recommend it based on this visit.","I won’t be returning unless things change.","Management needs to take a serious look.","Hope they see this and improve."]
+      }
+    },
+    ur: {
+      5:{
+        open:["{name} میں کھانا واقعی لاجواب تھا۔","{name} میں شاندار تجربہ رہا۔","بہت ہی عمدہ جگہ ہے۔"],
+        detail:["ذائقہ، صفائی اور سروس سب کچھ بہترین تھا۔","عملہ خوش اخلاق تھا اور آرڈر وقت پر ملا۔","ماحول بہت اچھا تھا اور کھانا تازہ اور گرم ملا۔"],
+        close:["سب کو ضرور آنا چاہیے!","ہم دوبارہ ضرور آئیں گے۔","پانچ ستارے بنتے ہیں!"]
+      },
+      4:{
+        open:["{name} میں اچھا تجربہ رہا۔","کھانا مزیدار تھا۔","مجموعی طور پر اچھی جگہ ہے۔"],
+        detail:["سروس اچھی تھی، بس تھوڑا انتظار کرنا پڑا۔","ذائقہ عمدہ تھا اور قیمتیں بھی مناسب ہیں۔","ماحول اچھا تھا، بیٹھنے کی جگہ تھوڑی کم ہے۔"],
+        close:["دوبارہ آنے کا ارادہ ہے۔","سفارش کروں گا۔","چار ستارے!"]
+      },
+      3:{
+        open:["{name} کا تجربہ ٹھیک ٹھاک رہا۔","کھانا اوسط درجے کا تھا۔","کچھ چیزیں اچھی تھیں، کچھ نہیں۔"],
+        detail:["کچھ ڈشز اچھی تھیں مگر باقی اوسط۔","سروس ٹھیک تھی مگر انتظار زیادہ تھا۔","صفائی اچھی تھی مگر ذائقہ خاص نہیں لگا۔"],
+        close:["شاید دوبارہ موقع دوں۔","بہتری کی گنجائش ہے۔","تین ستارے۔"]
+      },
+      2:{
+        open:["توقع سے کم تجربہ رہا۔","{name} سے مایوسی ہوئی۔","کھانا خاص نہیں تھا۔"],
+        detail:["کھانا دیر سے آیا اور ٹھنڈا تھا۔","آرڈر غلط آیا اور درست ہونے میں وقت لگا۔","قیمت کے حساب سے معیار کم تھا۔"],
+        close:["امید ہے بہتری آئے گی۔","فی الحال سفارش نہیں کروں گا۔","دو ستارے۔"]
+      },
+      1:{
+        open:["بہت برا تجربہ رہا۔","افسوس، {name} نے مایوس کیا۔","ایسا تجربہ دوبارہ نہیں چاہوں گا۔"],
+        detail:["کھانا تازہ نہیں تھا اور سروس بھی سست تھی۔","طویل انتظار کے بعد بھی آرڈر غلط ملا۔","صفائی اور معیار دونوں ناقص تھے۔"],
+        close:["انتظامیہ کو توجہ دینی چاہیے۔","دوبارہ نہیں آؤں گا۔","ایک ستارہ۔"]
+      }
+    }
+  };
+
+  /* ================= analytics (optional beacon) ================= */
+  function track(event, extra){
+    if (!cfg.analyticsUrl) return;
+    try{
+      var payload = { event:event, restaurant:cfg.id || cfg.name, lang:lang, t:Date.now() };
+      if (extra) Object.keys(extra).forEach(function(k){ payload[k] = extra[k]; });
+      var body = JSON.stringify(payload);
+      if (navigator.sendBeacon) navigator.sendBeacon(cfg.analyticsUrl, body);
+      else fetch(cfg.analyticsUrl, {method:"POST", body:body, keepalive:true});
+    }catch(e){}
+  }
+
+  /* ================= element handles ================= */
+  var $ = function(id){ return document.getElementById(id); };
+  var homeScreen=$("screenHome"), postScreen=$("screenPost"),
+      pickArea=$("pickArea"), feedbackArea=$("feedbackArea"), rateCard=$("rateCard"),
+      starBar=$("starBar"), starFill=$("starFill"), rateHint=$("rateHint"),
+      track_el=$("track"), dots=$("dots"), carousel=$("carousel"),
+      prevBtn=$("prevBtn"), nextBtn=$("nextBtn"),
+      editor=$("editor"), charCount=$("charCount"), toast=$("toast");
+  var stepEls = { rate:$("stepRate"), pick:$("stepPick"), post:$("stepPost") };
+
+  /* ================= language ================= */
+  var lang = "en";
+  try{ lang = localStorage.getItem("tapreview_lang") || "en"; }catch(e){}
+  if (lang !== "en" && lang !== "ur") lang = "en";
+
+  function T(){ return STR[lang]; }
+  function fmt(v){ return (v % 1 === 0) ? String(v) : v.toFixed(1); }
+  function hintFor(v){ return fmt(v) + " ★ · " + T().hints[Math.min(5, Math.max(1, Math.round(v)))]; }
+
+  function applyLang(){
+    document.body.classList.toggle("ur", lang === "ur");
+    document.documentElement.lang = (lang === "ur") ? "ur" : "en";
+    $("langEn").classList.toggle("on", lang === "en");
+    $("langUr").classList.toggle("on", lang === "ur");
+    $("eyebrow").textContent = T().eyebrow;
+    $("demoNote").textContent = T().demo;
+    stepEls.rate.textContent = T().steps[0];
+    stepEls.pick.textContent = T().steps[1];
+    stepEls.post.textContent = T().steps[2];
+    $("rateTitle").textContent = T().rateTitle;
+    rateHint.textContent = rating ? hintFor(rating) : T().hintDefault;
+    $("swipeHint").textContent = T().swipeHint;
+    $("shuffleBtn").textContent = T().shuffle;
+    $("copyOpenBtn").textContent = T().copyOpen;
+    $("copyBtn").textContent = T().copyOnly;
+    $("googleNote").textContent = T().googleNote;
+    $("backToPick").textContent = T().backToPick;
+    $("fbTitle").textContent = T().fbTitle;
+    $("fbBody").textContent = T().fbBody;
+    $("fbText").placeholder = T().fbPlaceholder;
+    $("fbSendBtn").textContent = T().fbSend;
+    $("fbPublicBtn").textContent = T().fbPublic;
+    updateCount();
+  }
+  function setLang(l){
+    lang = l;
+    try{ localStorage.setItem("tapreview_lang", l); }catch(e){}
+    applyLang();
+    if (rating && !pickArea.hidden) buildCarousel(rating);
+  }
+  $("langEn").addEventListener("click", function(){ setLang("en"); });
+  $("langUr").addEventListener("click", function(){ setLang("ur"); });
+
+  /* ================= header ================= */
+  $("restaurantName").textContent = cfg.name;
+  document.title = "TapReview · " + cfg.name;
+  $("demoNote").hidden = !demo;
+  if (cfg.logo){ $("logo").src = cfg.logo; $("logo").hidden = false; }
+
+  /* ================= screens ================= */
+  function show(which){
+    homeScreen.hidden = (which !== "home");
+    postScreen.hidden = (which !== "post");
+    stepEls.rate.classList.toggle("on", which === "home" && !rating);
+    stepEls.pick.classList.toggle("on", which === "home" && !!rating);
+    stepEls.post.classList.toggle("on", which === "post");
+    window.scrollTo(0,0);
+  }
+
+  /* ================= star slider (half-star steps) ================= */
+  var rating = 0;
+  var forcePublic = false;
+
+  function paintStars(v){ starFill.style.width = (v/5*100) + "%"; }
+
+  function valueFromEvent(e){
+    var r = starBar.getBoundingClientRect();
+    var v = (e.clientX - r.left) / r.width * 5;
+    v = Math.round(v * 2) / 2;
+    return Math.min(5, Math.max(1, v));
+  }
+
+  var starDragging = false;
+  starBar.addEventListener("pointerdown", function(e){
+    starDragging = true;
+    try{ starBar.setPointerCapture(e.pointerId); }catch(_){}
+    var v = valueFromEvent(e);
+    paintStars(v); rateHint.textContent = hintFor(v);
+  });
+  starBar.addEventListener("pointermove", function(e){
+    if (!starDragging && e.pointerType !== "mouse") return;
+    var v = valueFromEvent(e);
+    paintStars(v); rateHint.textContent = hintFor(v);
+  });
+  starBar.addEventListener("pointerup", function(e){
+    if (!starDragging) return;
+    starDragging = false;
+    pickRating(valueFromEvent(e));
+  });
+  starBar.addEventListener("pointercancel", function(){
+    starDragging = false;
+    paintStars(rating);
+    rateHint.textContent = rating ? hintFor(rating) : T().hintDefault;
+  });
+  starBar.addEventListener("mouseleave", function(){
+    if (starDragging) return;
+    paintStars(rating);
+    rateHint.textContent = rating ? hintFor(rating) : T().hintDefault;
+  });
+  starBar.addEventListener("keydown", function(e){
+    var v;
+    if (e.key === "ArrowRight" || e.key === "ArrowUp") v = Math.min(5, (rating || 0.5) + 0.5);
+    else if (e.key === "ArrowLeft" || e.key === "ArrowDown") v = Math.max(1, (rating || 1.5) - 0.5);
+    else return;
+    e.preventDefault();
+    e.stopPropagation();
+    pickRating(v);
+  });
+
+  function isGated(v){
+    return !forcePublic && !!(cfg.privateBelow && cfg.feedbackEmail && v < cfg.privateBelow);
+  }
+
+  function pickRating(v){
+    if (v === rating) return;
+    rating = v;
+    paintStars(v);
+    starBar.setAttribute("aria-valuenow", String(v));
+    starBar.setAttribute("aria-valuetext", fmt(v) + " " + T().starsWord);
+    rateHint.textContent = hintFor(v);
+    rateCard.classList.add("compact");
+    var gated = isGated(v);
+    feedbackArea.hidden = !gated;
+    pickArea.hidden = gated;
+    if (!gated) buildCarousel(v);
+    stepEls.rate.classList.remove("on");
+    stepEls.pick.classList.add("on");
+    track("rate", {rating:v});
+  }
+
+  /* ================= review generation ================= */
+  function tiersFor(v){
+    var lo = Math.max(1, Math.min(5, Math.floor(v)));
+    var hi = Math.max(1, Math.min(5, Math.ceil(v)));
+    return (lo === hi) ? [lo] : [hi, lo];
+  }
+  function makeReview(tier){
+    var f = FRAGMENTS[lang][tier];
+    var pick = function(a){ return a[Math.floor(Math.random()*a.length)]; };
+    return [pick(f.open), pick(f.detail), pick(f.close)].join(" ").split("{name}").join(cfg.name);
+  }
+  function genReviews(v, n){
+    var tiers = tiersFor(v);
+    var out = [], seen = {}, guard = 0;
+    while (out.length < n && guard < 300){
+      guard++;
+      var tier = tiers[out.length % tiers.length];
+      var t = makeReview(tier);
+      if (seen[t]) continue;
+      seen[t] = 1;
+      out.push(t);
+    }
+    return out;
+  }
+
+  /* ================= carousel ================= */
+  var index = 0, count = 0;
+
+  prevBtn.addEventListener("click", function(){ goTo(index-1); });
+  nextBtn.addEventListener("click", function(){ goTo(index+1); });
+  $("shuffleBtn").addEventListener("click", function(){
+    if (rating) buildCarousel(rating);
+    track("shuffle", {rating:rating});
+  });
+
+  function miniStars(v){
+    var wrap = document.createElement("span");
+    wrap.className = "mini-stars";
+    wrap.textContent = "★★★★★";
+    var f = document.createElement("span");
+    f.className = "fill";
+    f.textContent = "★★★★★";
+    f.style.width = (v/5*100) + "%";
+    wrap.appendChild(f);
+    return wrap;
+  }
+
+  function buildCarousel(v){
+    var list = genReviews(v, 8);
+    count = list.length;
+    index = 0;
+    track_el.innerHTML = "";
+    dots.innerHTML = "";
+    list.forEach(function(text){
+      var card = document.createElement("div");
+      card.className = "review-card";
+      var s = document.createElement("div");
+      s.className = "stars-static";
+      s.appendChild(miniStars(v));
+      var num = document.createElement("span");
+      num.className = "num";
+      num.textContent = fmt(v);
+      s.appendChild(num);
+      var p = document.createElement("p");
+      p.textContent = text;
+      var btn = document.createElement("button");
+      btn.className = "btn btn-primary";
+      btn.type = "button";
+      btn.textContent = T().use;
+      btn.addEventListener("click", function(){ openEditor(p.textContent); });
+      card.appendChild(s); card.appendChild(p); card.appendChild(btn);
+      track_el.appendChild(card);
+      dots.appendChild(document.createElement("i"));
+    });
+    goTo(0);
+  }
+
+  function goTo(i){
+    index = Math.max(0, Math.min(count-1, i));
+    track_el.style.transform = "translateX(" + (-index*100) + "%)";
+    var ds = dots.querySelectorAll("i");
+    ds.forEach(function(d,k){ d.classList.toggle("on", k===index); });
+    prevBtn.disabled = (index === 0);
+    nextBtn.disabled = (index === count-1);
+  }
+
+  var swStartX = 0, swCurX = 0, swiping = false;
+  carousel.addEventListener("touchstart", function(e){
+    swiping = true;
+    swStartX = swCurX = e.touches[0].clientX;
+    track_el.classList.add("dragging");
+  }, {passive:true});
+  carousel.addEventListener("touchmove", function(e){
+    if (!swiping) return;
+    swCurX = e.touches[0].clientX;
+    var dx = swCurX - swStartX;
+    track_el.style.transform = "translateX(calc(" + (-index*100) + "% + " + dx + "px))";
+  }, {passive:true});
+  carousel.addEventListener("touchend", function(){
+    if (!swiping) return;
+    swiping = false;
+    track_el.classList.remove("dragging");
+    var dx = swCurX - swStartX;
+    if (dx < -50) goTo(index+1);
+    else if (dx > 50) goTo(index-1);
+    else goTo(index);
+  });
+  document.addEventListener("keydown", function(e){
+    if (homeScreen.hidden || pickArea.hidden) return;
+    if (document.activeElement === starBar) return;
+    if (e.key === "ArrowRight") goTo(index+1);
+    if (e.key === "ArrowLeft") goTo(index-1);
+  });
+
+  /* ================= private feedback (optional gating) ================= */
+  $("fbSendBtn").addEventListener("click", function(){
+    var body = $("fbText").value.trim();
+    var subject = T().fbSubject + " — " + cfg.name + " (" + fmt(rating) + "★)";
+    location.href = "mailto:" + encodeURIComponent(cfg.feedbackEmail) +
+      "?subject=" + encodeURIComponent(subject) +
+      "&body=" + encodeURIComponent(body);
+    track("feedback_send", {rating:rating});
+  });
+  $("fbPublicBtn").addEventListener("click", function(){
+    forcePublic = true;
+    feedbackArea.hidden = true;
+    pickArea.hidden = false;
+    buildCarousel(rating);
+  });
+
+  /* ================= editor / copy / post ================= */
+  function openEditor(text){
+    editor.value = text;
+    updateCount();
+    show("post");
+    track("pick");
+  }
+  function updateCount(){ charCount.textContent = editor.value.length + " " + T().chars; }
+  editor.addEventListener("input", updateCount);
+
+  $("backToPick").addEventListener("click", function(){ show("home"); });
+
+  var toastTimer = null;
+  function showToast(msg){
+    toast.textContent = msg;
+    toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toast.classList.remove("show"); }, 1800);
+  }
+
+  /* Synchronous copy keeps the user gesture alive for window.open. */
+  function copySync(){
+    var ok = false;
+    editor.focus();
+    editor.select();
+    try{ ok = document.execCommand("copy"); }catch(e){}
+    if (window.getSelection) window.getSelection().removeAllRanges();
+    editor.blur();
+    return ok;
+  }
+  function copyAsync(){
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(editor.value).then(
+        function(){ showToast(T().copied); },
+        function(){ showToast(copySync() ? T().copied : T().copyFail); }
+      );
+    } else {
+      showToast(copySync() ? T().copied : T().copyFail);
+    }
+  }
+  function googleUrl(){
+    return cfg.placeId
+      ? "https://search.google.com/local/writereview?placeid=" + encodeURIComponent(cfg.placeId)
+      : "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(cfg.name + " reviews");
+  }
+
+  $("copyBtn").addEventListener("click", function(){
+    copyAsync();
+    track("copy", {rating:rating});
+  });
+  $("copyOpenBtn").addEventListener("click", function(){
+    var ok = copySync();
+    if (!ok && navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(editor.value);
+      ok = true;
+    }
+    showToast(ok ? T().copied : T().copyFail);
+    window.open(googleUrl(), "_blank", "noopener");
+    track("google_click", {rating:rating});
+  });
+
+  /* ================= init ================= */
+  applyLang();
+  track("scan");
+})();
+</script>
+</body>
+</html>

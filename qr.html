@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TapReview · QR Codes</title>
+<style>
+  :root{
+    --bg:#FAF7F2; --surface:#FFFFFF; --ink:#241D16; --muted:#6E6259;
+    --line:#E7DFD4; --accent:#1E6B4E; --accent-ink:#FFFFFF;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#171310; --surface:#211C17; --ink:#F2EBE2; --muted:#A3968A;
+      --line:#372F27; --accent:#3FA97C; --accent-ink:#0F1512;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#171310; --surface:#211C17; --ink:#F2EBE2; --muted:#A3968A;
+    --line:#372F27; --accent:#3FA97C; --accent-ink:#0F1512;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+    padding:24px 18px 60px;
+  }
+  .wrap{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+  h1{font-size:24px;margin:0}
+  p.lead{color:var(--muted);margin:0;font-size:14px;line-height:1.5}
+  label{font-size:13px;font-weight:600;color:var(--muted)}
+  input{
+    width:100%; padding:12px 14px; border-radius:12px;
+    border:1px solid var(--line); background:var(--surface); color:var(--ink);
+    font-size:15px; font-family:inherit;
+  }
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:16px;
+    padding:20px; display:flex; flex-direction:column; gap:12px; align-items:center;
+    text-align:center;
+  }
+  .card h2{margin:0;font-size:18px}
+  .card .url{font-size:12px;color:var(--muted);word-break:break-all}
+  .qr{background:#fff;padding:12px;border-radius:12px}
+  .qr canvas,.qr img{display:block}
+  a.dl{
+    display:inline-block; background:var(--accent); color:var(--accent-ink);
+    text-decoration:none; font-weight:600; font-size:14px;
+    padding:10px 18px; border-radius:10px;
+  }
+  .err{color:#B4463C;font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>TapReview QR codes</h1>
+  <p class="lead">One QR per restaurant in <code>restaurants.json</code>. Print the QR; scanning it opens the review flow for that restaurant. QR codes point at the base URL below — after deploying, this defaults to the live address automatically.</p>
+  <div>
+    <label for="base">Base URL</label>
+    <input id="base">
+  </div>
+  <div id="list"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+(async function(){
+  var baseInput = document.getElementById("base");
+  var list = document.getElementById("list");
+  baseInput.value = location.href.replace(/qr\.html.*$/, "");
+
+  var data;
+  try{
+    var res = await fetch("restaurants.json", {cache:"no-store"});
+    data = await res.json();
+  }catch(e){
+    list.innerHTML = '<p class="err">Could not load restaurants.json — serve this folder over HTTP (e.g. <code>python3 -m http.server</code>) rather than opening the file directly.</p>';
+    return;
+  }
+
+  function render(){
+    list.innerHTML = "";
+    var base = baseInput.value.replace(/\?.*$/, "");
+    Object.keys(data.restaurants || {}).forEach(function(id){
+      var r = data.restaurants[id];
+      var url = base + "?id=" + encodeURIComponent(id);
+
+      var card = document.createElement("div");
+      card.className = "card";
+      var h = document.createElement("h2");
+      h.textContent = r.name + "  (" + id + ")";
+      var u = document.createElement("div");
+      u.className = "url";
+      u.textContent = url;
+      var qrBox = document.createElement("div");
+      qrBox.className = "qr";
+      card.appendChild(h); card.appendChild(u); card.appendChild(qrBox);
+      list.appendChild(card);
+
+      new QRCode(qrBox, { text:url, width:220, height:220, correctLevel:QRCode.CorrectLevel.M });
+
+      /* download link once the canvas exists */
+      setTimeout(function(){
+        var canvas = qrBox.querySelector("canvas");
+        if (!canvas) return;
+        var a = document.createElement("a");
+        a.className = "dl";
+        a.textContent = "Download PNG";
+        a.href = canvas.toDataURL("image/png");
+        a.download = "tapreview-qr-" + id + ".png";
+        card.appendChild(a);
+      }, 50);
+    });
+  }
+
+  baseInput.addEventListener("change", render);
+  render();
+})();
+</script>
+</body>
+</html>
