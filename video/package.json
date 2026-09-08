@@ -1,0 +1,21 @@
+{
+  "name": "tapreview-video",
+  "private": true,
+  "scripts": {
+    "music": "node scripts/music.mjs",
+    "studio": "remotion studio",
+    "render": "remotion render TapReview out/tapreview.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.521",
+    "@remotion/google-fonts": "^4.0.521",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "remotion": "^4.0.521"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "typescript": "^7.0.2"
+  }
+}
